@@ -21,7 +21,7 @@ class LLM
 public:
     LLM(const String &apiKey, const String &baseUrl = "https://api.openai.com/v1");
 
-    String chatCompletion(const std::vector<ChatMessage> &messages, const LLMCompletionOptions &options = {});
+    ChatMessage chatCompletion(const std::vector<ChatMessage> &messages, const LLMCompletionOptions &options = {});
 
 private:
     String _apiKey;

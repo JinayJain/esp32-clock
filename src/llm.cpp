@@ -6,7 +6,7 @@ LLM::LLM(const String &apiKey, const String &baseUrl) : _apiKey(apiKey), _baseUr
 {
 }
 
-String LLM::chatCompletion(const std::vector<ChatMessage> &messages, const LLMCompletionOptions &options)
+ChatMessage LLM::chatCompletion(const std::vector<ChatMessage> &messages, const LLMCompletionOptions &options)
 {
     HTTPClient http;
     String endpoint = _baseUrl + "/chat/completions";
@@ -60,5 +60,5 @@ String LLM::chatCompletion(const std::vector<ChatMessage> &messages, const LLMCo
     }
 
     http.end();
-    return response;
+    return ChatMessage{"assistant", response};
 }

@@ -7,15 +7,17 @@
 #include <ArduinoJson.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <time.h>
 
 #include "secrets.h"
 #include "config.h"
 #include "llm.h"
+#include "app.h"
+#include "lv_util.h"
 
 // --- Global Objects ---
 SPIClass touchscreenSpi(VSPI);
 XPT2046_Touchscreen touchscreen(XPT2046_CS, XPT2046_IRQ);
-lv_obj_t *poemLabel;
 TaskHandle_t lvglTaskHandle = NULL;
 TaskHandle_t appTaskHandle = NULL;
 lv_mutex_t lvglMutex;
@@ -30,6 +32,7 @@ void appTask(void *pvParameters);
 void lvglTask(void *pvParameters);
 void touchpadRead(lv_indev_t *indev, lv_indev_data_t *data);
 bool connectToWiFi();
+bool syncTime();
 // -------------------------
 
 bool connectToWiFi()
@@ -55,6 +58,23 @@ bool connectToWiFi()
 
     Serial.println("\nWiFi connection failed!");
     return false;
+}
+bool syncTime()
+{
+    configTime(-4 * 3600, 0, "pool.ntp.org", "time.nist.gov");
+
+    struct tm timeinfo;
+    if (!getLocalTime(&timeinfo))
+    {
+        Serial.println("Failed to obtain time");
+        return false;
+    }
+
+    char timeStr[64];
+    strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+    Serial.print("Time synchronized: ");
+    Serial.println(timeStr);
+    return true;
 }
 
 void touchpadRead(lv_indev_t *indev, lv_indev_data_t *data)
@@ -85,50 +105,29 @@ void lvglTask(void *pvParameters)
 {
     while (1)
     {
-        lv_mutex_lock(&lvglMutex);
+        LVGLMutexGuard guard;
+
         lv_tick_inc(5);
         lv_task_handler();
-        lv_mutex_unlock(&lvglMutex);
         vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
 
 void appTask(void *pvParameters)
 {
-    if (!connectToWiFi())
+    if (!connectToWiFi() || !syncTime())
     {
-        lv_mutex_lock(&lvglMutex);
-        lv_label_set_text(poemLabel, "WiFi connection failed.");
-        lv_obj_align(poemLabel, LV_ALIGN_CENTER, 0, 0);
-        lv_mutex_unlock(&lvglMutex);
         vTaskDelete(NULL);
         return;
     }
 
-    LLM llm(GEMINI_API_KEY, "https://generativelanguage.googleapis.com/v1beta/openai");
+    App app;
+    app.setup();
 
-    std::vector<ChatMessage> messages = {{"user", "Write a haiku about a cat."}};
-
-    LLMCompletionOptions options;
-    options.model = "gemma-3-27b-it";
-    options.temperature = 1.0;
-    options.maxTokens = 1024;
-
-    String poem = llm.chatCompletion(messages, options);
-
-    lv_mutex_lock(&lvglMutex);
-    if (poem.length() > 0)
+    while (1)
     {
-        lv_label_set_text(poemLabel, poem.c_str());
+        app.loop();
     }
-    else
-    {
-        lv_label_set_text(poemLabel, "Error fetching poem.");
-    }
-    lv_obj_align(poemLabel, LV_ALIGN_CENTER, 0, 0);
-    lv_mutex_unlock(&lvglMutex);
-
-    vTaskDelete(NULL);
 }
 
 void setup()
@@ -159,18 +158,6 @@ void setup()
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
     lv_indev_set_read_cb(indev, touchpadRead);
 
-    lv_mutex_lock(&lvglMutex);
-    lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), 0);
-    poemLabel = lv_label_create(lv_scr_act());
-    lv_obj_set_width(poemLabel, TFT_HOR_RES - 20);
-    lv_label_set_long_mode(poemLabel, LV_LABEL_LONG_WRAP);
-    lv_label_set_text(poemLabel, "Initializing...");
-    lv_obj_set_style_text_color(poemLabel, lv_color_white(), 0);
-    lv_obj_set_style_text_align(poemLabel, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_line_space(poemLabel, 10, 0);
-    lv_obj_align(poemLabel, LV_ALIGN_CENTER, 0, 0);
-    lv_mutex_unlock(&lvglMutex);
-
     xTaskCreatePinnedToCore(
         lvglTask,
         "LVGL Task",
@@ -178,7 +165,7 @@ void setup()
         NULL,
         1,
         &lvglTaskHandle,
-        0);
+        LVGL_CORE);
 
     xTaskCreatePinnedToCore(
         appTask,
@@ -187,7 +174,7 @@ void setup()
         NULL,
         1,
         &appTaskHandle,
-        1);
+        APP_CORE);
 }
 
 void loop()
