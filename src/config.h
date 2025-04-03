@@ -13,3 +13,9 @@
 
 #define LVGL_CORE 0
 #define APP_CORE 1
+
+#define LVGL_STACK_SIZE 8192
+#define APP_STACK_SIZE 16384
+
+#define LATITUDE 39.7876
+#define LONGITUDE -75.6966

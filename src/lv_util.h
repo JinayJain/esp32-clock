@@ -1,18 +1,30 @@
 #pragma once
 
-#include <lvgl.h>
-#include <Arduino.h>
-extern lv_mutex_t lvglMutex;
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
-class LVGLMutexGuard
+extern SemaphoreHandle_t guiMutex;
+
+inline void lockGui()
+{
+    xSemaphoreTake(guiMutex, portMAX_DELAY);
+}
+
+inline void unlockGui()
+{
+    xSemaphoreGive(guiMutex);
+}
+
+class GUILock
 {
 public:
-    LVGLMutexGuard()
+    GUILock()
     {
-        lv_mutex_lock(&lvglMutex);
+        lockGui();
     }
-    ~LVGLMutexGuard()
+
+    ~GUILock()
     {
-        lv_mutex_unlock(&lvglMutex);
+        unlockGui();
     }
 };

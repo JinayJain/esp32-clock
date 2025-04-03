@@ -6,6 +6,13 @@ LLM::LLM(const String &apiKey, const String &baseUrl) : _apiKey(apiKey), _baseUr
 {
 }
 
+void createLLMResponseFilter(JsonDocument &filter)
+{
+    JsonObject choices0 = filter["choices"][0].to<JsonObject>();
+    JsonObject message = choices0.createNestedObject("message");
+    message["content"] = true;
+}
+
 ChatMessage LLM::chatCompletion(const std::vector<ChatMessage> &messages, const LLMCompletionOptions &options)
 {
     HTTPClient http;
@@ -15,14 +22,13 @@ ChatMessage LLM::chatCompletion(const std::vector<ChatMessage> &messages, const 
     http.addHeader("Content-Type", "application/json");
     http.addHeader("Authorization", "Bearer " + _apiKey);
 
-    // Prepare JSON payload
-    DynamicJsonDocument doc(16384); // Adjust size based on expected payload size
+    DynamicJsonDocument requestDoc(4096);
 
-    doc["model"] = options.model;
-    doc["temperature"] = options.temperature;
-    doc["max_tokens"] = options.maxTokens;
+    requestDoc["model"] = options.model;
+    requestDoc["temperature"] = options.temperature;
+    requestDoc["max_tokens"] = options.maxTokens;
 
-    JsonArray messagesArray = doc.createNestedArray("messages");
+    JsonArray messagesArray = requestDoc.createNestedArray("messages");
     for (const auto &message : messages)
     {
         JsonObject msgObj = messagesArray.createNestedObject();
@@ -31,9 +37,8 @@ ChatMessage LLM::chatCompletion(const std::vector<ChatMessage> &messages, const 
     }
 
     String payload;
-    serializeJson(doc, payload);
+    serializeJson(requestDoc, payload);
 
-    // Make the HTTP POST request
     int httpResponseCode = http.POST(payload);
     String response = "";
 
@@ -41,11 +46,13 @@ ChatMessage LLM::chatCompletion(const std::vector<ChatMessage> &messages, const 
     {
         response = http.getString();
 
-        // Parse response to extract completion
-        DynamicJsonDocument responseDoc(16384);
-        deserializeJson(responseDoc, response);
+        StaticJsonDocument<128> filter;
+        createLLMResponseFilter(filter);
 
-        if (responseDoc.containsKey("choices") && responseDoc["choices"].size() > 0)
+        DynamicJsonDocument responseDoc(4096);
+        DeserializationError error = deserializeJson(responseDoc, response, DeserializationOption::Filter(filter));
+
+        if (!error && responseDoc.containsKey("choices") && responseDoc["choices"].size() > 0)
         {
             if (responseDoc["choices"][0].containsKey("message") &&
                 responseDoc["choices"][0]["message"].containsKey("content"))
