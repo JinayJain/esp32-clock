@@ -1,0 +1,10 @@
+[project]
+name = "google-calendar-auth"
+version = "0.1.0"
+description = "Utility to get Google Calendar refresh token for CYD Clock"
+authors = [{ name = "CYD Clock User" }]
+requires-python = ">=3.8"
+dependencies = [
+    "google-auth-oauthlib>=1.0.0",
+    "google-api-python-client>=2.0.0",
+]
