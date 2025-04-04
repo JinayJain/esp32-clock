@@ -72,6 +72,8 @@ String GoogleCalendarClient::getToken()
         return accessToken;
     }
 
+    Serial.println("Refreshing token...");
+
     HTTPClient http;
     http.begin(GOOGLE_OAUTH_URL);
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -125,12 +127,10 @@ CalendarEvent GoogleCalendarClient::parseCalendarEvents(const String &response)
         return noEvent;
     }
 
-    // Create filter to reduce memory usage
-    StaticJsonDocument<192> filter; // Reduced from 256 to 192 bytes
+    StaticJsonDocument<128> filter;
     createCalendarFilter(filter);
 
-    // Use smaller document with filter
-    DynamicJsonDocument doc(1024); // Reduced from 2048 to 1024 bytes
+    DynamicJsonDocument doc(1024);
     DeserializationError error = deserializeJson(doc, response, DeserializationOption::Filter(filter));
 
     if (error)
@@ -249,6 +249,8 @@ CalendarEvent GoogleCalendarClient::getUpcomingEvent()
         return noEvent;
     }
 
+    Serial.println("Getting upcoming event...");
+
     HTTPClient http;
 
     time_t now = time(NULL);
@@ -350,9 +352,6 @@ void calendarTask(void *pvParameters)
 {
     CalendarTaskData *calendarData = (CalendarTaskData *)pvParameters;
 
-    // Add delay before first request to allow system to stabilize
-    vTaskDelay(pdMS_TO_TICKS(5000));
-
     while (1)
     {
         Serial.println("Updating calendar events...");
@@ -362,9 +361,8 @@ void calendarTask(void *pvParameters)
         if (event.isActive)
         {
             char eventText[128];
-            snprintf(eventText, sizeof(eventText), LV_SYMBOL_BELL " Now: %s (until %s)",
-                     event.title.c_str(),
-                     formatEventTime(event.endTime).c_str());
+            snprintf(eventText, sizeof(eventText), LV_SYMBOL_BELL " Now: %s",
+                     event.title.c_str());
 
             GUILock lock;
             lv_label_set_text(calendarData->eventLabel, eventText);
@@ -372,9 +370,9 @@ void calendarTask(void *pvParameters)
         else if (event.startTime > 0)
         {
             char eventText[128];
-            snprintf(eventText, sizeof(eventText), LV_SYMBOL_BELL " %s at %s",
-                     event.title.c_str(),
-                     formatEventTime(event.startTime).c_str());
+            snprintf(eventText, sizeof(eventText), LV_SYMBOL_BELL " %s: %s",
+                     formatEventTime(event.startTime).c_str(),
+                     event.title.c_str());
 
             GUILock lock;
             lv_label_set_text(calendarData->eventLabel, eventText);

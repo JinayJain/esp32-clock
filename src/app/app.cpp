@@ -42,21 +42,22 @@ static void setupUI()
     lv_obj_set_flex_flow(centerContainer, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(centerContainer, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
+    dateLabel = lv_label_create(centerContainer);
+    lv_obj_set_style_text_font(dateLabel, &lv_font_montserrat_14, LV_PART_MAIN);
+    lv_obj_set_style_text_color(dateLabel, lv_color_hex(0xf1f3f3), LV_PART_MAIN);
+    lv_label_set_text(dateLabel, "Date");
+
     timeLabel = lv_label_create(centerContainer);
     lv_obj_set_style_text_font(timeLabel, &lv_font_montserrat_48, LV_PART_MAIN);
     lv_obj_set_style_text_color(timeLabel, lv_color_hex(0x60e083), LV_PART_MAIN);
     lv_label_set_text(timeLabel, "Loading...");
-
-    dateLabel = lv_label_create(centerContainer);
-    lv_obj_set_style_text_font(dateLabel, &lv_font_montserrat_14, LV_PART_MAIN);
-    lv_obj_set_style_text_color(dateLabel, lv_color_hex(0xf1f3f3), LV_PART_MAIN);
 
     calendarLabel = lv_label_create(centerContainer);
     lv_obj_set_style_text_font(calendarLabel, &lv_font_montserrat_14, LV_PART_MAIN);
     lv_obj_set_style_text_color(calendarLabel, lv_color_hex(0xf1be44), LV_PART_MAIN);
     lv_label_set_text(calendarLabel, "Calendar");
     lv_obj_set_width(calendarLabel, LV_PCT(90));
-    lv_label_set_long_mode(calendarLabel, LV_LABEL_LONG_WRAP);
+    lv_label_set_long_mode(calendarLabel, LV_LABEL_LONG_DOT);
     lv_obj_set_style_text_align(calendarLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
 
     temperatureLabel = lv_label_create(lv_scr_act());
@@ -97,9 +98,9 @@ void appTask(void *pvParameters)
         .eventLabel = calendarLabel,
     };
 
+    xTaskCreatePinnedToCore(calendarTask, "calendar", 8192, &calendarData, 3, NULL, APP_CORE);
     xTaskCreatePinnedToCore(weatherTask, "weather", 8192, &weatherData, 3, NULL, APP_CORE);
     xTaskCreatePinnedToCore(spotifyTask, "spotify", 8192, &spotifyData, 3, NULL, APP_CORE);
-    xTaskCreatePinnedToCore(calendarTask, "calendar", 16384, &calendarData, 3, NULL, APP_CORE);
 
     TickType_t xLastWakeTime = xTaskGetTickCount();
 

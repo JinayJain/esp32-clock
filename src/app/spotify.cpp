@@ -75,7 +75,7 @@ String SpotifyClient::getToken()
     if (httpResponseCode > 0)
     {
         String response = http.getString();
-        StaticJsonDocument<1024> doc;
+        StaticJsonDocument<512> doc;
         deserializeJson(doc, response);
         return doc["access_token"].as<String>();
     }
@@ -108,10 +108,10 @@ NowPlaying SpotifyClient::getPlayingState(const String &access_token)
 
 void SpotifyClient::parseSpotifyResponse(const String &response, NowPlaying &now_playing)
 {
-    StaticJsonDocument<512> filter;
+    StaticJsonDocument<256> filter;
     createSpotifyFilter(filter);
 
-    DynamicJsonDocument doc(2048);
+    DynamicJsonDocument doc(1024);
     DeserializationError error = deserializeJson(doc, response, DeserializationOption::Filter(filter));
     if (error)
     {

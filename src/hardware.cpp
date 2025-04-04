@@ -26,14 +26,7 @@ void initTouchscreen()
 
 void initDisplay()
 {
-    uint8_t *draw_buf1 = new uint8_t[DRAW_BUF_SIZE];
-    if (!draw_buf1)
-    {
-        Serial.println("LVGL draw_buf allocation failed!");
-        // Consider adding error handling here, like halting
-        while (1)
-            vTaskDelay(portMAX_DELAY);
-    }
+    static uint8_t draw_buf1[DRAW_BUF_SIZE];
 
     lv_display_t *disp;
     disp = lv_tft_espi_create(TFT_HOR_RES, TFT_VER_RES, draw_buf1, DRAW_BUF_SIZE);
