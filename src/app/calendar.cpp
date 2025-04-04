@@ -9,10 +9,10 @@
 #include "config.h"
 #include "secrets.h"
 
-#define CALENDAR_UPDATE_INTERVAL_MIN 1
+#define CALENDAR_UPDATE_INTERVAL_MIN 1 // Increased from 1 to 5 minutes to reduce API calls
 #define GOOGLE_OAUTH_URL "https://oauth2.googleapis.com/token"
 #define GOOGLE_CALENDAR_API_URL "https://www.googleapis.com/calendar/v3/calendars/primary/events"
-#define MAX_CALENDAR_EVENTS 5
+#define MAX_CALENDAR_EVENTS 3 // Reduced from 5 to 3 events
 
 // Function declarations
 String formatEventTime(time_t eventTime);
@@ -87,7 +87,7 @@ String GoogleCalendarClient::getToken()
     {
         String response = http.getString();
 
-        DynamicJsonDocument doc(1024);
+        StaticJsonDocument<512> doc; // Reduced from 1024 to 512 bytes
         DeserializationError error = deserializeJson(doc, response);
 
         if (!error)
@@ -116,19 +116,27 @@ void GoogleCalendarClient::createCalendarFilter(JsonDocument &filter)
 
 CalendarEvent GoogleCalendarClient::parseCalendarEvents(const String &response)
 {
+    CalendarEvent noEvent = {"No upcoming events", "", 0, 0, false};
+
+    // Check for empty response
+    if (response.length() < 10)
+    {
+        Serial.println("Empty calendar response");
+        return noEvent;
+    }
+
     // Create filter to reduce memory usage
-    StaticJsonDocument<256> filter;
+    StaticJsonDocument<192> filter; // Reduced from 256 to 192 bytes
     createCalendarFilter(filter);
 
     // Use smaller document with filter
-    DynamicJsonDocument doc(4096);
+    DynamicJsonDocument doc(1024); // Reduced from 2048 to 1024 bytes
     DeserializationError error = deserializeJson(doc, response, DeserializationOption::Filter(filter));
-
-    CalendarEvent noEvent = {"No upcoming events", "", 0, 0, false};
 
     if (error)
     {
-        Serial.println("Failed to parse calendar response");
+        Serial.print(F("Failed to parse calendar response: "));
+        Serial.println(error.c_str());
         return noEvent;
     }
 
@@ -254,10 +262,12 @@ CalendarEvent GoogleCalendarClient::getUpcomingEvent()
     timeinfo = gmtime(&twoHoursFromNow);
     strftime(timeMax, sizeof(timeMax), "%Y-%m-%dT%H:%M:%SZ", timeinfo);
 
-    String url = String(GOOGLE_CALENDAR_API_URL) +
-                 "?timeMin=" + urlEncode(timeMin) +
-                 "&timeMax=" + urlEncode(timeMax) +
-                 "&singleEvents=true&orderBy=startTime&maxResults=10";
+    // Pre-build URL to reduce string concatenation operations
+    char url[256];
+    snprintf(url, sizeof(url), "%s?timeMin=%s&timeMax=%s&singleEvents=true&orderBy=startTime&maxResults=5",
+             GOOGLE_CALENDAR_API_URL,
+             urlEncode(timeMin).c_str(),
+             urlEncode(timeMax).c_str());
 
     http.begin(url);
     http.addHeader("Authorization", "Bearer " + token);
@@ -339,6 +349,9 @@ String urlEncode(const String &str)
 void calendarTask(void *pvParameters)
 {
     CalendarTaskData *calendarData = (CalendarTaskData *)pvParameters;
+
+    // Add delay before first request to allow system to stabilize
+    vTaskDelay(pdMS_TO_TICKS(5000));
 
     while (1)
     {

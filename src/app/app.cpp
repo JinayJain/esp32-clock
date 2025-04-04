@@ -54,7 +54,7 @@ static void setupUI()
     calendarLabel = lv_label_create(centerContainer);
     lv_obj_set_style_text_font(calendarLabel, &lv_font_montserrat_14, LV_PART_MAIN);
     lv_obj_set_style_text_color(calendarLabel, lv_color_hex(0xf1be44), LV_PART_MAIN);
-    lv_label_set_text(calendarLabel, "Loading calendar...");
+    lv_label_set_text(calendarLabel, "Calendar");
     lv_obj_set_width(calendarLabel, LV_PCT(90));
     lv_label_set_long_mode(calendarLabel, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(calendarLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
@@ -99,7 +99,7 @@ void appTask(void *pvParameters)
 
     xTaskCreatePinnedToCore(weatherTask, "weather", 8192, &weatherData, 3, NULL, APP_CORE);
     xTaskCreatePinnedToCore(spotifyTask, "spotify", 8192, &spotifyData, 3, NULL, APP_CORE);
-    xTaskCreatePinnedToCore(calendarTask, "calendar", 12288, &calendarData, 3, NULL, APP_CORE);
+    xTaskCreatePinnedToCore(calendarTask, "calendar", 16384, &calendarData, 3, NULL, APP_CORE);
 
     TickType_t xLastWakeTime = xTaskGetTickCount();
 

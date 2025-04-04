@@ -694,7 +694,7 @@
 #define LV_USE_THEME_SIMPLE 1
 
 /*A theme designed for monochrome displays*/
-#define LV_USE_THEME_MONO 1
+#define LV_USE_THEME_MONO 0
 
 /*==================
  * LAYOUTS
@@ -1074,7 +1074,7 @@
 *==================*/
 
 /*Enable the examples to be built with the library*/
-#define LV_BUILD_EXAMPLES 1
+#define LV_BUILD_EXAMPLES 0
 
 /*===================
  * DEMO USAGE
